@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Urenoverzicht accordering</title>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:"Helvetica Neue",Arial,sans-serif;background:#f0f4f8;min-height:100vh;padding:24px 16px;color:#1a1a2e;}
+.wrap{max-width:720px;margin:0 auto;}
+.header{background:white;border-radius:12px;padding:20px 24px;margin-bottom:14px;box-shadow:0 2px 12px rgba(0,0,0,0.08);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+.logo{font-size:20px;font-weight:900;color:#003366;}
+.badge{background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;border-radius:20px;padding:4px 12px;font-size:12px;font-weight:700;}
+.card{background:white;border-radius:12px;padding:20px 24px;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,0.06);}
+.card-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:#7a8ba8;margin-bottom:12px;}
+.info-rij{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f0f0f0;font-size:14px;}
+.info-rij:last-child{border-bottom:none;}
+.datum-blok{background:white;border-radius:12px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,0.06);overflow:hidden;}
+.datum-header{background:#003366;color:white;padding:11px 18px;font-size:14px;font-weight:800;}
+.shift-rij{display:flex;align-items:flex-start;gap:10px;padding:12px 16px;border-bottom:1px solid #f0f4f8;flex-wrap:wrap;}
+.shift-rij:last-child{border-bottom:none;}
+.shift-info{flex:1;min-width:120px;}
+.shift-naam-txt{font-size:14px;font-weight:700;color:#1a1a2e;}
+.niveau{display:inline-block;background:#e3f2fd;color:#1565c0;border-radius:5px;padding:1px 7px;font-size:11px;font-weight:700;margin-left:5px;}
+.shift-tijden{font-size:12px;color:#666;margin-top:2px;}
+.bereken-rij{font-size:11px;color:#999;margin-top:2px;}
+.shift-prijs{font-size:14px;font-weight:800;color:#007aaa;padding-top:2px;}
+.shift-acties{display:flex;gap:6px;padding-top:2px;}
+.btn-ok{width:36px;height:36px;border-radius:8px;border:2px solid #ccc;background:white;cursor:pointer;font-size:16px;}
+.btn-ok.actief{border-color:#2e7d32;background:#e8f5e9;color:#2e7d32;}
+.btn-nok{width:36px;height:36px;border-radius:8px;border:2px solid #ccc;background:white;cursor:pointer;font-size:16px;}
+.btn-nok.actief{border-color:#c62828;background:#fdecea;color:#c62828;}
+.totaal-blok{background:#003366;color:white;border-radius:12px;padding:18px 22px;margin:14px 0;}
+.totaal-rijen{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:12px;}
+.totaal-item{background:rgba(255,255,255,0.08);border-radius:8px;padding:10px 14px;text-align:center;}
+.akkoord-blok{background:white;border-radius:12px;padding:22px 26px;box-shadow:0 2px 8px rgba(0,0,0,0.06);margin-bottom:14px;}
+.naam-veld{width:100%;border:1px solid #dde3ee;border-radius:8px;padding:11px 14px;font-size:14px;margin-bottom:12px;outline:none;}
+.naam-lbl{font-size:12px;font-weight:700;color:#555;margin-bottom:6px;display:block;}
+.opmerking-veld{width:100%;border:1px solid #dde3ee;border-radius:8px;padding:11px 14px;font-size:13px;margin-bottom:12px;outline:none;resize:vertical;min-height:70px;font-family:inherit;}
+.btn-rij{display:flex;gap:10px;margin-bottom:10px;}
+.btn-akkoord{flex:1;background:#2e7d32;color:white;border:none;border-radius:10px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;}
+.btn-deels{flex:1;background:#1565c0;color:white;border:none;border-radius:10px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;}
+.btn-afwijzen{width:100%;background:white;color:#c62828;border:2px solid #c62828;border-radius:10px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;}
+.success,.afgewezen,.fout{text-align:center;padding:40px 20px;}
+.icon{font-size:64px;margin-bottom:16px;}
+.success h2{color:#2e7d32;font-size:24px;font-weight:900;margin-bottom:8px;}
+.afgewezen h2,.fout h2{color:#c62828;font-size:24px;font-weight:900;margin-bottom:8px;}
+p{color:#666;font-size:15px;line-height:1.6;}
+.footer{text-align:center;font-size:11px;color:#aaa;padding:20px 0;line-height:1.8;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="inhoud"><div style="text-align:center;padding:60px;color:#999;">Overzicht laden...</div></div>
+</div>
+<script>
+function getParam(n){return new URLSearchParams(window.location.search).get(n);}
+function b64decode(s){try{return JSON.parse(decodeURIComponent(escape(atob(s))));}catch(e){return null;}}
+
+var dataParam=getParam('d');
+var data=dataParam?b64decode(dataParam):null;
+var shiftStatus={};
+
+if(!data){
+  document.getElementById('inhoud').innerHTML='<div class="card"><div class="fout"><div class="icon">&#9888;</div><h2>Ongeldige link</h2><p>Deze accordeerlink is ongeldig of verlopen.</p></div></div>';
+}else{
+  toonOverzicht(data);
+}
+
+function toonOverzicht(d){
+  var bedrijfNaam=d.b?d.b.n:(d.bedrijf?d.bedrijf.naam:'Site Light BV');
+  var bedrijfKvk=d.b?d.b.k:(d.bedrijf?d.bedrijf.kvk:'');
+  var bedrijfBtw=d.b?d.b.t:(d.bedrijf?d.bedrijf.btwnr:'');
+  var klant=d.k||d.klant||'';
+  var week=d.w||d.week||'';
+  var type=d.tp||d.type||'week';
+  var projectNaam=d.pn||d.projectNaam||'';
+  var toonNiveau=d.tn||d.toonNiveau||false;
+  var medewerkers=d.m||d.medewerkers||[];
+  var totaalUren=d.tu||d.totaalUren||0;
+  var totaalExBtw=d.te||d.totaalExBtw||'0.00';
+  var totaalBtw=d.tb||d.totaalBtw||'0.00';
+  var totaalIncl=d.ti||d.totaalIncl||'0.00';
+  var typeLabel=type==='project'?'Project: '+projectNaam:'Week '+week;
+  var dagVolgorde=['Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Zaterdag','Zondag'];
+  var perDag={};
+  var shiftIdx=0;
+
+  medewerkers.forEach(function(mw,mwIdx){
+    var naam=mw.n||mw.naam||'?';
+    var niveau=mw.nv||mw.niveau||'';
+    var dagen=mw.d||mw.dagen||[];
+    dagen.forEach(function(dag){
+      var dagNaam=dag.d||dag.dag||'';
+      if(!perDag[dagNaam]) perDag[dagNaam]=[];
+      var sk='s'+shiftIdx;
+      shiftIdx++;
+      shiftStatus[sk]=null;
+      perDag[dagNaam].push({naam:naam,niveau:niveau,dag:dag,shiftKey:sk});
+    });
+  });
+
+  var gesorteerd=Object.keys(perDag).sort(function(a,b){
+    var ia=dagVolgorde.indexOf(a),ib=dagVolgorde.indexOf(b);
+    return (ia<0?99:ia)-(ib<0?99:ib);
+  });
+
+  // Weekmaandag berekenen
+  function getWeekMaandag(w){
+    var parts=w.split('-W');
+    var y=+parts[0],wn=+parts[1];
+    var jan4=new Date(y,0,4);
+    var d=new Date(jan4);
+    d.setDate(jan4.getDate()-(jan4.getDay()||7)+1+(wn-1)*7);
+    return d;
+  }
+  var maandag=getWeekMaandag(week);
+  function getDatum(dagNaam){
+    var idx=dagVolgorde.indexOf(dagNaam);
+    if(idx<0) return '';
+    var d=new Date(maandag);
+    d.setDate(d.getDate()+idx);
+    return d.toLocaleDateString('nl-NL',{day:'numeric',month:'long'});
+  }
+
+  // Bouw pagina
+  var el=document.getElementById('inhoud');
+  el.innerHTML='';
+
+  // Header
+  var hdr=document.createElement('div'); hdr.className='header';
+  hdr.innerHTML='<div class="logo">'+bedrijfNaam+'</div><div class="badge">Urenoverzicht ter accordering</div>';
+  el.appendChild(hdr);
+
+  // Info card
+  var info=document.createElement('div'); info.className='card';
+  info.innerHTML='<div class="card-title">Overzichtinformatie</div>'+
+    '<div class="info-rij"><span style="color:#666;">Opdrachtgever</span><span style="font-weight:700;">'+klant+'</span></div>'+
+    '<div class="info-rij"><span style="color:#666;">Periode</span><span style="font-weight:700;">'+typeLabel+'</span></div>'+
+    '<div class="info-rij"><span style="color:#666;">Totaal uren</span><span style="font-weight:700;">'+totaalUren+'u</span></div>';
+  el.appendChild(info);
+
+  // Dag blokken
+  gesorteerd.forEach(function(dagNaam){
+    var blok=document.createElement('div'); blok.className='datum-blok';
+    var hd=document.createElement('div'); hd.className='datum-header';
+    hd.textContent='\uD83D\uDCC5 '+dagNaam+' \u2014 '+getDatum(dagNaam);
+    blok.appendChild(hd);
+    perDag[dagNaam].forEach(function(s){
+      var dag=s.dag;
+      var van=dag.v||dag.van||'';
+      var tot=dag.t||dag.tot||'';
+      var toeslag=dag.ts||dag.toeslag||'';
+      var bedrag=dag.b||dag.bedrag||'0.00';
+      var regels=dag.r||dag.regels||[];
+      var rij=document.createElement('div'); rij.className='shift-rij'; rij.id='rij_'+s.shiftKey;
+      var info2=document.createElement('div'); info2.className='shift-info';
+      var naamDiv=document.createElement('div'); naamDiv.className='shift-naam-txt';
+      naamDiv.textContent=s.naam;
+      if(toonNiveau&&s.niveau){var nb=document.createElement('span');nb.className='niveau';nb.textContent=s.niveau;naamDiv.appendChild(nb);}
+      var tijdDiv=document.createElement('div'); tijdDiv.className='shift-tijden';
+      tijdDiv.textContent=van+'\u2013'+tot+(toeslag?' \u00b7 '+toeslag:'');
+      info2.appendChild(naamDiv); info2.appendChild(tijdDiv);
+      regels.forEach(function(r){
+        var rd=document.createElement('div'); rd.className='bereken-rij'; rd.textContent=r;
+        info2.appendChild(rd);
+      });
+      var prijs=document.createElement('div'); prijs.className='shift-prijs'; prijs.textContent='\u20AC '+bedrag;
+      var acties=document.createElement('div'); acties.className='shift-acties';
+      var okBtn=document.createElement('button'); okBtn.className='btn-ok'; okBtn.id='ok_'+s.shiftKey; okBtn.textContent='\u2713';
+      var skOk=s.shiftKey;
+      okBtn.onclick=function(){setStatus(skOk,'ok');};
+      var nokBtn=document.createElement('button'); nokBtn.className='btn-nok'; nokBtn.id='nok_'+s.shiftKey; nokBtn.textContent='\u2717';
+      var skNok=s.shiftKey;
+      nokBtn.onclick=function(){setStatus(skNok,'nok');};
+      acties.appendChild(okBtn); acties.appendChild(nokBtn);
+      rij.appendChild(info2); rij.appendChild(prijs); rij.appendChild(acties);
+      blok.appendChild(rij);
+    });
+    el.appendChild(blok);
+  });
+
+  // Totaal blok
+  var tot=document.createElement('div'); tot.className='totaal-blok';
+  tot.innerHTML='<div style="font-size:12px;opacity:0.7;margin-bottom:4px;">Totaalbedrag excl. BTW</div>'+
+    '<div style="font-size:30px;font-weight:900;">\u20AC '+totaalExBtw+'</div>'+
+    '<div class="totaal-rijen">'+
+    '<div class="totaal-item"><div style="font-size:11px;opacity:0.6;margin-bottom:4px;">Excl. BTW</div><div style="font-size:15px;font-weight:800;">\u20AC '+totaalExBtw+'</div></div>'+
+    '<div class="totaal-item"><div style="font-size:11px;opacity:0.6;margin-bottom:4px;">BTW 21%</div><div style="font-size:15px;font-weight:800;">\u20AC '+totaalBtw+'</div></div>'+
+    '<div class="totaal-item"><div style="font-size:11px;opacity:0.6;margin-bottom:4px;">Incl. BTW</div><div style="font-size:15px;font-weight:800;">\u20AC '+totaalIncl+'</div></div>'+
+    '</div>';
+  el.appendChild(tot);
+
+  // Akkoord blok
+  var akk=document.createElement('div'); akk.className='akkoord-blok'; akk.id='akkoord-blok';
+  akk.innerHTML='<div class="card-title">Accordering</div>'+
+    '<p style="font-size:13px;color:#666;margin-bottom:14px;">Gebruik \u2713 en \u2717 per shift voor individuele accordering, of gebruik de knoppen hieronder.</p>'+
+    '<label class="naam-lbl">Uw naam (voor de registratie)</label>'+
+    '<input class="naam-veld" id="acc-naam" placeholder="Voor- en achternaam" type="text"/>'+
+    '<label class="naam-lbl">Opmerking (optioneel)</label>'+
+    '<textarea class="opmerking-veld" id="acc-opmerking" placeholder="Eventuele opmerkingen..."></textarea>'+
+    '<div class="btn-rij">'+
+    '<button class="btn-akkoord" id="btn-alles" onclick="allesAkkoord()">\u2705 Alles accorderen</button>'+
+    '<button class="btn-deels" id="btn-deels" onclick="deelsAkkoord()">\u2705 Accordeer selectie (0%)</button>'+
+    '</div>'+
+    '<button class="btn-afwijzen" onclick="geefAfwijzing()">\u274C Alles afwijzen met opmerking</button>';
+  el.appendChild(akk);
+
+  // Footer
+  var ft=document.createElement('div'); ft.className='footer';
+  ft.innerHTML=bedrijfNaam+' \u00B7 KvK: '+(bedrijfKvk||'\u2014')+' \u00B7 BTW: '+(bedrijfBtw||'\u2014')+'<br>Dit urenoverzicht is digitaal aangeboden conform SNA-norm';
+  el.appendChild(ft);
+}
+
+function setStatus(key,status){
+  shiftStatus[key]=shiftStatus[key]===status?null:status;
+  var ok=document.getElementById('ok_'+key);
+  var nok=document.getElementById('nok_'+key);
+  if(ok) ok.className='btn-ok'+(shiftStatus[key]==='ok'?' actief':'');
+  if(nok) nok.className='btn-nok'+(shiftStatus[key]==='nok'?' actief':'');
+  updateDeelsKnop();
+}
+
+function updateDeelsKnop(){
+  var totaal=Object.keys(shiftStatus).length;
+  if(!totaal) return;
+  var ok=Object.keys(shiftStatus).filter(function(k){return shiftStatus[k]==='ok';}).length;
+  var pct=Math.round(ok/totaal*100);
+  var btn=document.getElementById('btn-deels');
+  if(btn) btn.textContent='\u2705 Accordeer selectie ('+pct+'%)';
+}
+
+function allesAkkoord(){
+  Object.keys(shiftStatus).forEach(function(k){setStatus(k,'ok');});
+  geefAkkoord();
+}
+
+function deelsAkkoord(){
+  var ok=Object.keys(shiftStatus).filter(function(k){return shiftStatus[k]==='ok';});
+  if(!ok.length){alert('Markeer eerst minimaal 1 shift als akkoord.');return;}
+  geefAkkoord();
+}
+
+function geefAkkoord(){
+  var naam=document.getElementById('acc-naam').value.trim();
+  if(!naam){document.getElementById('acc-naam').style.borderColor='#c62828';document.getElementById('acc-naam').focus();return;}
+  var opmerking=document.getElementById('acc-opmerking').value.trim();
+  var tijdstempel=new Date().toLocaleString('nl-NL');
+  var totaal=Object.keys(shiftStatus).length;
+  var ok=Object.keys(shiftStatus).filter(function(k){return shiftStatus[k]==='ok';}).length;
+  var pct=Math.round(ok/totaal*100);
+  var statusTekst=pct===100?'Volledig geaccordeerd':pct+'% geaccordeerd ('+ok+' van '+totaal+' shifts)';
+  verstuurBevestiging(naam,opmerking,tijdstempel,statusTekst,false);
+  document.getElementById('inhoud').innerHTML='<div class="card"><div class="success"><div class="icon">\u2705</div><h2>'+(pct===100?'Urenoverzicht geaccordeerd':'Urenoverzicht gedeeltelijk geaccordeerd')+'</h2><p>Door <strong>'+naam+'</strong> op '+tijdstempel+'</p>'+(pct<100?'<p style="margin-top:8px;font-weight:700;color:#1565c0;">'+pct+'% geaccordeerd</p>':'')+(opmerking?'<p style="margin-top:8px;">Opmerking: '+opmerking+'</p>':'')+'<p style="margin-top:16px;font-size:13px;color:#999;">Een bevestiging is verstuurd naar Site Light BV.</p></div></div>';
+}
+
+function geefAfwijzing(){
+  var naam=document.getElementById('acc-naam').value.trim();
+  var opmerking=document.getElementById('acc-opmerking').value.trim();
+  if(!naam){document.getElementById('acc-naam').style.borderColor='#c62828';document.getElementById('acc-naam').focus();return;}
+  if(!opmerking){document.getElementById('acc-opmerking').style.borderColor='#c62828';document.getElementById('acc-opmerking').focus();alert('Vul een reden in.');return;}
+  var tijdstempel=new Date().toLocaleString('nl-NL');
+  verstuurBevestiging(naam,opmerking,tijdstempel,'AFGEWEZEN',true);
+  document.getElementById('inhoud').innerHTML='<div class="card"><div class="afgewezen"><div class="icon">\u274C</div><h2>Urenoverzicht afgewezen</h2><p>Door <strong>'+naam+'</strong> op '+tijdstempel+'<br><br>Reden: '+opmerking+'</p><p style="margin-top:16px;font-size:13px;color:#999;">Site Light BV is op de hoogte gesteld.</p></div></div>';
+}
+
+function verstuurBevestiging(naam,opmerking,tijdstempel,statusTekst,afgewezen){
+  var d=data;
+  var es=d.es||d.emailService||'';
+  var ep=d.ep||d.emailPubkey||'';
+  var tp=d.tp||d.type||'week';
+  var w=d.w||d.week||'';
+  var pn=d.pn||d.projectNaam||'';
+  var typeLabel=tp==='project'?'Project: '+pn:'Week '+w;
+  var klantNaam=d.k||d.klant||'';
+  if(ep&&es){
+    try{
+      emailjs.init(ep);
+      emailjs.send(es,'template_uv2nqf7',{
+        week:typeLabel,klant:klantNaam,naam:naam,tijdstip:tijdstempel,
+        opmerking:(afgewezen?'AFGEWEZEN - ':'')+statusTekst+(opmerking?' - Opmerking: '+opmerking:'')
+      });
+    }catch(e){console.log('Email fout:',e);}
+  }
+}
+</script>
+</body>
+</html>
